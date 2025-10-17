@@ -1,23 +1,3 @@
-/**
- * Claude Agent SDK Implementation of Workflow Builder
- *
- * This is an alternative, simpler implementation using the Claude Agent SDK
- * instead of LangGraph. It provides a more straightforward architecture with
- * automatic agent routing and built-in session management.
- *
- * Key differences from LangGraph implementation:
- * - Simpler code (~500 lines vs ~1500 lines)
- * - Automatic routing via agent descriptions (less control but easier)
- * - State managed in instance fields (no explicit StateGraph)
- * - In-process MCP tools (no separate tool execution logic)
- * - Natural conversation flow (context via history, not explicit passing)
- *
- * Trade-offs:
- * Pros: Much simpler, easier to extend, built-in features
- * Cons: Less routing control, no explicit state isolation, harder to evaluate per-stage
- *
- */
-
 import {
 	query,
 	tool,
@@ -296,13 +276,17 @@ export class WorkflowBuilderAgentClaude {
 				const isSubagentComplete =
 					isSDKUserMessage(message) &&
 					message.parent_tool_use_id === null &&
+					// @ts-ignore
 					Array.isArray(message.message.content) &&
+					// @ts-ignore
 					message.message.content.some((c) => 'type' in c && c.type === 'tool_result');
 
 				const isAgentResponseWithoutTools =
 					isSDKAssistantMessage(message) &&
 					Array.isArray(message.message.content) &&
+					// @ts-ignore
 					message.message.content.some((c) => 'type' in c && c.type === 'text') &&
+					// @ts-ignore
 					!message.message.content.some((c) => 'type' in c && c.type === 'tool_use');
 
 				const currentNodeCount = this.workflowJSON.nodes.length;
@@ -485,7 +469,7 @@ export class WorkflowBuilderAgentClaude {
 					'mcp__workflow-builder__get_node_details',
 					'mcp__workflow-builder__get_workflow_context',
 				],
-				model: 'haiku-4-5-20251001u',
+				model: 'sonnet',
 			},
 
 			builder: {
@@ -497,7 +481,7 @@ export class WorkflowBuilderAgentClaude {
 					'mcp__workflow-builder__connect_nodes',
 					'mcp__workflow-builder__get_workflow_context',
 				],
-				model: 'haiku-4-5-20251001u',
+				model: 'sonnet',
 			},
 
 			configurator: {
@@ -508,7 +492,7 @@ export class WorkflowBuilderAgentClaude {
 					'mcp__workflow-builder__set_node_parameters',
 					'mcp__workflow-builder__get_workflow_context',
 				],
-				model: 'haiku-4-5-20251001u',
+				model: 'sonnet',
 			},
 		};
 	}
@@ -981,7 +965,6 @@ export class WorkflowBuilderAgentClaude {
 			// Note: TypeScript can't narrow SDK's union type properly after Array.isArray check
 			// But we know it's safe because content is either string or array
 			else if (typeof messageContent === 'string') {
-				// @ts-expect-error - TypeScript narrowing issue with SDK union types, but this is safe after Array check
 				const trimmed = messageContent.trim();
 				if (trimmed) {
 					messages.push({
@@ -997,7 +980,7 @@ export class WorkflowBuilderAgentClaude {
 		if (isSDKResultMessage(message)) {
 			// Only success subtype has result field
 			if (message.subtype === 'success' && 'result' in message) {
-				const successMsg = message as Extract<SDKResultMessage, { subtype: 'success' }>;
+				const successMsg = message;
 				if (successMsg.result && typeof successMsg.result === 'string') {
 					messages.push({
 						role: 'assistant',
